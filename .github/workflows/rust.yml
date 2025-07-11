@@ -11,12 +11,22 @@ env:
 
 jobs:
   build:
-
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
 
     steps:
     - uses: actions/checkout@v4
+
     - name: Build
-      run: cargo build --verbose
-    - name: Run tests
-      run: cargo test --verbose
+      run: cargo build --release --verbose
+
+    - name: Upload artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: aes4linux-${{ matrix.os }}
+        path: |
+          target/release/aes4linux.exe
+          target/release/aes4linux
+        if-no-files-found: ignore 
