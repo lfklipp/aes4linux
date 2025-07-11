@@ -97,7 +97,10 @@ fn main() {
             match result {
                 Ok(_) => {
                     println!("Encryption successful: {}", output);
-                    secure_delete_folder(&input_path);
+                    // Only delete original if it's different from output
+                    if input != output {
+                        secure_delete_folder(&input_path);
+                    }
                 },
                 Err(e) => eprintln!("Encryption failed: {}", e),
             }
@@ -106,7 +109,10 @@ fn main() {
                 eprintln!("Encryption failed: {}", e);
             } else {
                 println!("Encryption successful: {}", output);
-                secure_delete(input);
+                // Only delete original if it's different from output
+                if input != output {
+                    secure_delete(input);
+                }
             }
         }
     } else if cli.decrypt {
@@ -123,11 +129,13 @@ fn main() {
                     println!("Decryption successful: {}", output);
                 }
                 secure_delete(temp.to_str().unwrap());
-                // Securely delete the encrypted file
-                if input_path.is_dir() {
-                    secure_delete_folder(&input_path);
-                } else {
-                    secure_delete(input);
+                // Only delete encrypted file if it's different from output
+                if input != output {
+                    if input_path.is_dir() {
+                        secure_delete_folder(&input_path);
+                    } else {
+                        secure_delete(input);
+                    }
                 }
             },
             Err(e) => {
