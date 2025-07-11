@@ -30,6 +30,20 @@ fn secure_delete(path: &str) {
     let _ = fs::remove_file(path);
 }
 
+fn secure_delete_folder(path: &PathBuf) {
+    if let Ok(entries) = fs::read_dir(path) {
+        for entry in entries.flatten() {
+            let p = entry.path();
+            if p.is_dir() {
+                secure_delete_folder(&p);
+            } else {
+                secure_delete(p.to_str().unwrap());
+            }
+        }
+    }
+    let _ = fs::remove_dir(path);
+}
+
 #[derive(Parser)]
 #[command(name = "aes4linux")]
 #[command(about = "Encrypt and decrypt files with AES and a password", long_about = None)]
@@ -81,7 +95,10 @@ fn main() {
             let result = encrypt_file(temp.to_str().unwrap(), &output, &password, LibAesMode::Gcm);
             secure_delete(temp.to_str().unwrap());
             match result {
-                Ok(_) => println!("Encryption successful: {}", output),
+                Ok(_) => {
+                    println!("Encryption successful: {}", output);
+                    secure_delete_folder(&input_path);
+                },
                 Err(e) => eprintln!("Encryption failed: {}", e),
             }
         } else {
@@ -89,6 +106,7 @@ fn main() {
                 eprintln!("Encryption failed: {}", e);
             } else {
                 println!("Encryption successful: {}", output);
+                secure_delete(input);
             }
         }
     } else if cli.decrypt {
@@ -105,6 +123,12 @@ fn main() {
                     println!("Decryption successful: {}", output);
                 }
                 secure_delete(temp.to_str().unwrap());
+                // Securely delete the encrypted file
+                if input_path.is_dir() {
+                    secure_delete_folder(&input_path);
+                } else {
+                    secure_delete(input);
+                }
             },
             Err(e) => {
                 eprintln!("Decryption failed: {}", e);
