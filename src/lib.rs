@@ -1,9 +1,9 @@
-use aes_gcm::{Aes256Gcm, Key, Nonce};
+use aes_gcm::{Aes256Gcm, Nonce};
 use aes_gcm::aead::{Aead, KeyInit};
 use rand::RngCore;
 use rand::rngs::OsRng;
 use argon2::{Argon2, PasswordHasher};
-use argon2::password_hash::{SaltString, PasswordHash, Output};
+use argon2::password_hash::{SaltString, Output};
 use std::fs;
 use std::fs::File;
 use std::io::{Read, Write};
@@ -71,14 +71,14 @@ pub fn encrypt_file(
     }
     // Read input file
     let plaintext = fs::read(input).map_err(|_| "Failed to read input file")?;
-    // Salt and nonce
+    // Generate salt and nonce
     let mut salt = [0u8; 16];
     let mut nonce = [0u8; 12];
     OsRng.fill_bytes(&mut salt);
     OsRng.fill_bytes(&mut nonce);
-    // Key
+    // Derive key
     let argon2 = Argon2::default();
-    let salt_str = SaltString::b64_encode(&salt).map_err(|_| "Salt encode error")?;
+    let salt_str = SaltString::encode_b64(&salt).map_err(|_| "Salt encode error")?;
     let password_hash = argon2.hash_password(password.as_bytes(), &salt_str)
         .map_err(|_| "Key derivation failed")?;
     let hash_output: Output = password_hash.hash.ok_or("No hash output")?;
@@ -91,7 +91,7 @@ pub fn encrypt_file(
     // Encrypt
     let ciphertext = cipher.encrypt(Nonce::from_slice(&nonce), plaintext.as_ref())
         .map_err(|_| "Encryption failed")?;
-    // Write output
+    // Write output: salt + nonce + ciphertext
     let mut out = fs::File::create(output).map_err(|_| "Failed to create output file")?;
     out.write_all(&salt).map_err(|_| "Write error")?;
     out.write_all(&nonce).map_err(|_| "Write error")?;
@@ -118,7 +118,7 @@ pub fn decrypt_file(
     let ciphertext = &data[28..];
     // Derive key
     let argon2 = Argon2::default();
-    let salt_str = SaltString::b64_encode(salt).map_err(|_| "Salt encode error")?;
+    let salt_str = SaltString::encode_b64(salt).map_err(|_| "Salt encode error")?;
     let password_hash = argon2.hash_password(password.as_bytes(), &salt_str)
         .map_err(|_| "Key derivation failed")?;
     let hash_output: Output = password_hash.hash.ok_or("No hash output")?;

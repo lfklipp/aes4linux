@@ -1,7 +1,7 @@
 use clap::{Parser};
 use std::path::PathBuf;
 use std::fs;
-use std::io::{Write, Read};
+use std::io::Write;
 use std::fs::File;
 use std::env::temp_dir;
 use std::sync::{Arc, Mutex};
@@ -54,8 +54,11 @@ struct Cli {
     /// Decrypt
     #[arg(short = 'd', conflicts_with = "encrypt")]
     decrypt: bool,
+    /// Target file or folder
     target_file: PathBuf,
+    /// Password
     password: String,
+    /// Output file or folder (optional)
     output_file: Option<PathBuf>,
 }
 
@@ -74,7 +77,7 @@ fn main() {
         }
     };
     let input_path = PathBuf::from(input);
-
+    // Track temp file for cleanup
     let temp_zip = Arc::new(Mutex::new(None));
     let temp_zip_clone = temp_zip.clone();
     ctrlc::set_handler(move || {
@@ -83,6 +86,7 @@ fn main() {
         }
         std::process::exit(1);
     }).expect("Error setting Ctrl-C handler");
+    
     if cli.encrypt {
         if input_path.is_dir() {
             let mut temp = temp_dir();
@@ -97,7 +101,6 @@ fn main() {
             match result {
                 Ok(_) => {
                     println!("Encryption successful: {}", output);
-                    // Only delete original if it's different from output
                     if input != output {
                         secure_delete_folder(&input_path);
                     }
@@ -109,7 +112,6 @@ fn main() {
                 eprintln!("Encryption failed: {}", e);
             } else {
                 println!("Encryption successful: {}", output);
-                // Only delete original if it's different from output
                 if input != output {
                     secure_delete(input);
                 }
@@ -129,7 +131,6 @@ fn main() {
                     println!("Decryption successful: {}", output);
                 }
                 secure_delete(temp.to_str().unwrap());
-                // Only delete encrypted file if it's different from output
                 if input != output {
                     if input_path.is_dir() {
                         secure_delete_folder(&input_path);
